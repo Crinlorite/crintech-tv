@@ -1,0 +1,6 @@
+# Subdomain routing: cada TV apunta a su carpeta de instalación
+# tv1.crintech.pro → Ciudad Deportiva Ártica
+# tv2.crintech.pro → (próxima instalación)
+# tv3.crintech.pro → (próxima instalación)
+
+# Por ahora las TVs cargan directamente tv.crintech.pro/artica/
