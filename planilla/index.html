@@ -75,6 +75,8 @@
   </style>
 </head>
 <body>
+  <!-- Video invisible mudo en loop: evita que WebOS active el protector de pantalla -->
+  <video id="keepalive" muted autoplay loop playsinline style="position:fixed;width:1px;height:1px;opacity:0.01;pointer-events:none;z-index:-1"></video>
   <div class="slideshow" id="slideshow"></div>
 
   <script>
@@ -160,6 +162,19 @@
       div.appendChild(img);
       return div;
     }
+
+    // Video keepalive: genera un stream desde canvas para que WebOS detecte reproducción
+    (function() {
+      const canvas = document.createElement('canvas');
+      canvas.width = 2;
+      canvas.height = 2;
+      const ctx = canvas.getContext('2d');
+      ctx.fillRect(0, 0, 2, 2);
+      const stream = canvas.captureStream(1);
+      const video = document.getElementById('keepalive');
+      video.srcObject = stream;
+      video.play().catch(() => {});
+    })();
 
     // Anti-sleep: simula actividad cada 60s + reload cada 28 min
     setInterval(() => {
