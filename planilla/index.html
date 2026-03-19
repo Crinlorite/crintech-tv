@@ -161,14 +161,17 @@
       return div;
     }
 
-    // Hard reload cada 28 min como fallback anti-sleep
+    // Anti-sleep: simula actividad cada 60s + reload cada 28 min
+    setInterval(() => {
+      document.body.dispatchEvent(new MouseEvent('mousemove', { bubbles: true }));
+      document.body.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true }));
+      window.scrollBy(0, 0);
+    }, 60000);
     setTimeout(() => location.reload(), 28 * 60 * 1000);
 
-    // Wake Lock: impide que la pantalla se apague
+    // Wake Lock API (navegadores compatibles)
     async function requestWakeLock() {
-      try {
-        await navigator.wakeLock.request('screen');
-      } catch {}
+      try { await navigator.wakeLock.request('screen'); } catch {}
     }
     requestWakeLock();
     document.addEventListener('visibilitychange', () => {
