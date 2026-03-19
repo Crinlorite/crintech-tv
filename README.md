@@ -1,4 +1,4 @@
-# CrinTech TV
+# Crintech TV
 
 Sistema de cartelería digital para las instalaciones deportivas. Cada TV carga una URL con su slideshow de imágenes promocionales.
 
