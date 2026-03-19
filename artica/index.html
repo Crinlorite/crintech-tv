@@ -25,7 +25,7 @@
       inset: 0;
       opacity: 0;
       transition: none;
-      will-change: opacity, transform, filter;
+      will-change: opacity;
       display: flex;
       justify-content: center;
       align-items: center;
@@ -45,111 +45,20 @@
       z-index: 1;
     }
 
-    /* ── Transition effects ── */
-
-    /* Fade + zoom in */
-    .fx-fade-zoom .slide.active {
-      animation: fadeZoomIn 1.4s ease-out forwards;
+    /* Fade simple */
+    .slide.active {
+      animation: fadeIn 1s ease forwards;
     }
-    .fx-fade-zoom .slide.prev {
-      animation: fadeZoomOut 1.4s ease-in forwards;
+    .slide.prev {
+      animation: fadeOut 1s ease forwards;
     }
-    @keyframes fadeZoomIn {
-      from { opacity: 0; transform: scale(1.15); }
-      to   { opacity: 1; transform: scale(1); }
-    }
-    @keyframes fadeZoomOut {
-      from { opacity: 1; transform: scale(1); }
-      to   { opacity: 0; transform: scale(0.9); }
-    }
-
-    /* Slide from right */
-    .fx-slide-right .slide.active {
-      animation: slideInRight 1s cubic-bezier(.22,1,.36,1) forwards;
-    }
-    .fx-slide-right .slide.prev {
-      animation: slideOutLeft 1s cubic-bezier(.22,1,.36,1) forwards;
-    }
-    @keyframes slideInRight {
-      from { opacity: 0; transform: translateX(100%); }
-      to   { opacity: 1; transform: translateX(0); }
-    }
-    @keyframes slideOutLeft {
-      from { opacity: 1; transform: translateX(0); }
-      to   { opacity: 0; transform: translateX(-100%); }
-    }
-
-    /* Blur dissolve */
-    .fx-blur .slide.active {
-      animation: blurIn 1.6s ease forwards;
-    }
-    .fx-blur .slide.prev {
-      animation: blurOut 1.6s ease forwards;
-    }
-    @keyframes blurIn {
-      from { opacity: 0; filter: blur(30px); transform: scale(1.05); }
-      to   { opacity: 1; filter: blur(0); transform: scale(1); }
-    }
-    @keyframes blurOut {
-      from { opacity: 1; filter: blur(0); transform: scale(1); }
-      to   { opacity: 0; filter: blur(30px); transform: scale(0.95); }
-    }
-
-    /* Flip */
-    .fx-flip .slide.active {
-      animation: flipIn 1.2s ease forwards;
-    }
-    .fx-flip .slide.prev {
-      animation: flipOut 1.2s ease forwards;
-    }
-    @keyframes flipIn {
-      from { opacity: 0; transform: perspective(1200px) rotateY(90deg); }
-      to   { opacity: 1; transform: perspective(1200px) rotateY(0deg); }
-    }
-    @keyframes flipOut {
-      from { opacity: 1; transform: perspective(1200px) rotateY(0deg); }
-      to   { opacity: 0; transform: perspective(1200px) rotateY(-90deg); }
-    }
-
-    /* Ken Burns (slow pan + zoom) */
-    .fx-kenburns .slide.active {
-      animation: kbIn 1.2s ease forwards, kbDrift 8s ease-in-out 1.2s forwards;
-    }
-    .fx-kenburns .slide.prev {
-      animation: kbOut 1.2s ease forwards;
-    }
-    @keyframes kbIn {
+    @keyframes fadeIn {
       from { opacity: 0; }
       to   { opacity: 1; }
     }
-    @keyframes kbDrift {
-      from { transform: scale(1) translate(0, 0); }
-      to   { transform: scale(1.08) translate(-1%, -1%); }
-    }
-    @keyframes kbOut {
+    @keyframes fadeOut {
       from { opacity: 1; }
       to   { opacity: 0; }
-    }
-
-    /* Glitch reveal */
-    .fx-glitch .slide.active {
-      animation: glitchIn 0.8s steps(8) forwards;
-    }
-    .fx-glitch .slide.prev {
-      animation: glitchOut 0.8s steps(8) forwards;
-    }
-    @keyframes glitchIn {
-      0%   { opacity: 0; clip-path: inset(0 100% 0 0); }
-      30%  { opacity: 1; clip-path: inset(20% 0 60% 0); }
-      50%  { clip-path: inset(60% 0 10% 0); }
-      70%  { clip-path: inset(0 0 40% 0); }
-      100% { clip-path: inset(0); }
-    }
-    @keyframes glitchOut {
-      0%   { opacity: 1; clip-path: inset(0); }
-      30%  { clip-path: inset(40% 0 20% 0); }
-      60%  { clip-path: inset(0 0 60% 0); }
-      100% { opacity: 0; clip-path: inset(0 0 100% 0); }
     }
 
     /* ── Placeholder when no images ── */
@@ -170,20 +79,23 @@
 
   <script>
     const INTERVAL = 8000; // ms between slides
-    const FX = ['fx-fade-zoom', 'fx-slide-right', 'fx-blur', 'fx-flip', 'fx-kenburns', 'fx-glitch'];
-
-    // Image list is generated at build time via _build.js
-    // Falls back to empty array if images.json doesn't exist yet
+    const REFRESH = 60000; // ms entre checks de imágenes nuevas (1 min)
     let images = [];
+    let current = 0;
+    let prevSlide = null;
+    let slideTimer = null;
 
-    async function init() {
+    async function fetchImages() {
       try {
         const res = await fetch('images.json?' + Date.now());
-        images = await res.json();
+        return await res.json();
       } catch {
-        images = [];
+        return [];
       }
+    }
 
+    async function init() {
+      images = await fetchImages();
       const container = document.getElementById('slideshow');
 
       if (images.length === 0) {
@@ -191,49 +103,53 @@
         return;
       }
 
-      // Preload all images
-      images.forEach(src => {
-        const img = new Image();
-        img.src = 'images/' + src;
-      });
+      images.forEach(src => { const img = new Image(); img.src = 'images/' + src; });
 
-      let current = 0;
-      let prevSlide = null;
-
-      // Create first slide
       const firstSlide = createSlide(images[0]);
       container.appendChild(firstSlide);
-      container.className = 'slideshow ' + randomFx();
       firstSlide.classList.add('active');
       firstSlide.style.opacity = '1';
 
-      if (images.length === 1) return;
+      startSlideshow();
+    }
 
-      setInterval(() => {
+    function startSlideshow() {
+      if (slideTimer) clearInterval(slideTimer);
+      if (images.length <= 1) return;
+
+      slideTimer = setInterval(() => {
+        const container = document.getElementById('slideshow');
         const nextIdx = (current + 1) % images.length;
-        const fx = randomFx();
 
-        // Remove old prev
         if (prevSlide) prevSlide.remove();
 
-        // Current becomes prev
         const currentSlide = container.querySelector('.slide.active');
         currentSlide.classList.remove('active');
         currentSlide.classList.add('prev');
         prevSlide = currentSlide;
 
-        // New slide
         const newSlide = createSlide(images[nextIdx]);
         container.appendChild(newSlide);
-        container.className = 'slideshow ' + fx;
-
-        // Trigger reflow then activate
         void newSlide.offsetWidth;
         newSlide.classList.add('active');
 
         current = nextIdx;
       }, INTERVAL);
     }
+
+    // Auto-refresh: comprueba imágenes nuevas cada minuto
+    setInterval(async () => {
+      const newImages = await fetchImages();
+      const changed = JSON.stringify(newImages) !== JSON.stringify(images);
+      if (!changed || newImages.length === 0) return;
+
+      // Preload nuevas
+      newImages.forEach(src => { const img = new Image(); img.src = 'images/' + src; });
+
+      images = newImages;
+      current = current % images.length;
+      startSlideshow();
+    }, REFRESH);
 
     function createSlide(src) {
       const div = document.createElement('div');
@@ -245,9 +161,8 @@
       return div;
     }
 
-    function randomFx() {
-      return FX[Math.floor(Math.random() * FX.length)];
-    }
+    // Hard reload cada 28 min como fallback anti-sleep
+    setTimeout(() => location.reload(), 28 * 60 * 1000);
 
     // Wake Lock: impide que la pantalla se apague
     async function requestWakeLock() {
